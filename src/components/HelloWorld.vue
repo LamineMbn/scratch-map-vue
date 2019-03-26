@@ -4,48 +4,50 @@
 
 <script>
 import * as am4core from "@amcharts/amcharts4/core";
-import * as am4charts from "@amcharts/amcharts4/charts";
+import * as am4maps from "@amcharts/amcharts4/maps";
 import am4themes_animated from "@amcharts/amcharts4/themes/animated";
+import am4geodata_worldLow from "@amcharts/amcharts4-geodata/worldLow";
 
 am4core.useTheme(am4themes_animated);
 
 export default {
   name: "HelloWorld",
   mounted() {
-    let chart = am4core.create(this.$refs.chartdiv, am4charts.XYChart);
+    let chart = am4core.create(this.$refs.chartdiv, am4maps.MapChart);
 
-    chart.paddingRight = 20;
+    // Set map definition
+    chart.geodata = am4geodata_worldLow;
 
-    let data = [];
-    let visits = 10;
-    for (let i = 1; i < 366; i++) {
-      visits += Math.round((Math.random() < 0.5 ? 1 : -1) * Math.random() * 10);
-      data.push({
-        date: new Date(2018, 0, i),
-        name: "name" + i,
-        value: visits
-      });
-    }
+    // Set projection
+    chart.projection = new am4maps.projections.Miller();
 
-    chart.data = data;
+    // Create map polygon series
+    var polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
+    polygonSeries.mapPolygons.template.strokeWidth = 0.5;
 
-    let dateAxis = chart.xAxes.push(new am4charts.DateAxis());
-    dateAxis.renderer.grid.template.location = 0;
+    // Exclude Antartica
+    polygonSeries.exclude = ["AQ"];
 
-    let valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
-    valueAxis.tooltip.disabled = true;
-    valueAxis.renderer.minWidth = 35;
+    // Make map load polygon (like country names) data from GeoJSON
+    polygonSeries.useGeodata = true;
 
-    let series = chart.series.push(new am4charts.LineSeries());
-    series.dataFields.dateX = "date";
-    series.dataFields.valueY = "value";
+    // Configure series
+    var polygonTemplate = polygonSeries.mapPolygons.template;
+    polygonTemplate.tooltipText = "{name}";
+    polygonTemplate.fill = chart.colors.getIndex(0);
 
-    series.tooltipText = "{valueY.value}";
-    chart.cursor = new am4charts.XYCursor();
+    // Create hover state and set alternative fill color
+    var hs = polygonTemplate.states.create("hover");
+    hs.properties.fill = chart.colors.getIndex(2);
 
-    let scrollbarX = new am4charts.XYChartScrollbar();
-    scrollbarX.series.push(series);
-    chart.scrollbarX = scrollbarX;
+    // Create active state
+    var activeState = polygonTemplate.states.create("active");
+    activeState.properties.fill = chart.colors.getIndex(4);
+
+    // Create an event to toggle "active" state
+    polygonTemplate.events.on("hit", function(ev) {
+      ev.target.isActive = !ev.target.isActive;
+    });
 
     this.chart = chart;
   },
